@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Shower_Playable_14735_SP</title>
+
+<style>
+html, body { margin: 0; padding: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
+#wrapper { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; }
+#container { position: relative; height: 100vh; width: calc(100vh * 9 / 16); max-width: 100vw; max-height: calc(100vw * 16 / 9); overflow: hidden; }
+
+@media (max-aspect-ratio: 9/16) { #container { width: 100vw; height: calc(100vw * 16 / 9); } }
+
+.bg-img, #canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#canvas { z-index: 10; background: transparent; }
+
+/* START SCREEN */
+#startScreen {
+    position: absolute; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.75);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    transition: opacity 0.6s ease;
+}
+#startArrows { width: 60px; margin-bottom: 10px; margin-bottom: 10%; animation: arrowSwipeUp 2s infinite ease-in-out; }
+#startCaption { 
+    position: absolute;
+    top: 40%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    width: 70%; 
+    animation: textBreath 3s infinite ease-in-out; 
+}
+#startBtn { 
+    margin-bottom: -40%; 
+    left: 50%; 
+    width: 70%; cursor: pointer; animation: pulse 2.5s infinite; }
+
+/* SPONGE & HAND */
+#spongeContainer {
+    position: absolute; left: 50%; top: 50%; width: 200px; height: 200px;
+    transform: translate(-50%, -50%); z-index: 150;
+    display: flex; justify-content: center; align-items: center;
+    pointer-events: none; opacity: 0; transition: opacity 0.4s ease;
+}
+#mainSponge { width: 180px; transform: rotate(-15deg); z-index: 151; }
+#spongeOutline { position: absolute; width: 150px; transform: rotate(-15deg); z-index: 152; animation: blink 1s infinite; }
+#tutorialHand { 
+    position: absolute; width: 60px; top: 60%; left: 40%; z-index: 155; 
+    pointer-events: none; transition: opacity 0.3s ease; 
+}
+
+#tutorialCaption {
+    position: absolute; z-index: 140; left: 50%; bottom: 22%; transform: translateX(-50%);
+    width: 70%; transition: opacity 0.4s ease, visibility 0.4s; pointer-events: none; 
+    opacity: 0; animation: textBreath 2.5s infinite;
+}
+
+#muteBtn { position: absolute; top: 20px; right: 20px; z-index: 1000; width: 45px; height: 45px; background: rgba(0,0,0,.6); border-radius: 50%; display: none; justify-content: center; align-items: center; color: white; border: 2px solid rgba(255,255,255,0.2); }
+#overlay { position: absolute; inset: 0; background: #000; z-index: 300; opacity: 0; transition: opacity 1s ease; pointer-events: none; }
+
+#ctaBtn { display: none; position: absolute; z-index: 320; bottom: 25%; left: 50%; width: 100%; transform: translateX(-50%); animation: pulseCTA 1.8s infinite; }
+
+#wowEffect { position: absolute; z-index: 290; width: 40%; top: 45%; left: 70%; transform: translate(-50%, -50%) scale(0); opacity: 0; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+#wowEffect.visible { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+
+#particleCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 250; 
+}
+
+@keyframes arrowSwipeUp {
+    0% { transform:  translateY(50px); opacity: 1; }
+    50% { transform:  translateY(1px); opacity: 0; }
+    100% { transform:  translateY(50px); opacity: 1; }
+}
+@keyframes textBreath {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.05); }
+}
+@keyframes spongeAutoMove {
+    0%, 100% { transform: translate(-50%, -50%) translateX(0); }
+    25% { transform: translate(-50%, -50%) translateX(-30px) rotate(-5deg); }
+    75% { transform: translate(-50%, -50%) translateX(30px) rotate(5deg); }
+}
+@keyframes blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes pulseCTA { 0%, 100% { transform: translate(-50%, 0) scale(1); } 50% { transform: translate(-50%, 0) scale(1.08); } }
+
+.auto-move { animation: spongeAutoMove 2s infinite ease-in-out !important; }
+</style>
+</head>
+
+<body>
+<div id="wrapper">
+    <div id="container">
+        <div id="startScreen">
+            <img src="assets/start_arrows.webp" id="startArrows">
+            <img src="assets/start_caption.webp" id="startCaption">
+            <img src="assets/button.webp" id="startBtn" onclick="initExperience()">
+        </div>
+
+        <img id="poster" src="assets/poster.webp" class="bg-img" style="z-index:1;">
+        <video id="videoBg" class="bg-img" loop muted playsinline style="z-index:2;">
+            <source src="assets/Comp 1.webm" type="video/webm">
+        </video>
+        <canvas id="canvas"></canvas>
+        <canvas id="particleCanvas"></canvas>
+        <div id="spongeContainer">
+            <img src="assets/sponge_outline.webp" id="spongeOutline">
+            <img src="assets/sponge.webp" id="mainSponge">
+            <img src="assets/hand.webp" id="tutorialHand">
+        </div>
+
+        <img src="assets/caption.webp" id="tutorialCaption">
+        <img src="assets/wow.webp" id="wowEffect">
+        <div id="muteBtn">🔊</div>
+        <div id="overlay"></div>
+            <img src="assets/final_button.webp" id="ctaBtn" onclick="window.location.href='https://honeytoon.com/comic-video/teach-me-first?n=1'">
+    </div>
+</div>
+
+<audio id="bgMusic" src="assets/music.mp3" loop muted playsinline></audio>
+<audio id="soundStart" src="assets/vo_start.mp3" muted playsinline></audio>
+<audio id="soundFinish" src="assets/vo_finish.mp3" muted playsinline></audio>
+<audio id="scrubSound" src="assets/scrub.mp3" loop muted playsinline></audio>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const brush = new Image(); brush.src = 'assets/sponge.webp';
+const outline = document.getElementById('spongeOutline');
+const hand = document.getElementById('tutorialHand');
+let isGameStarted = false, isTutorial = false, isFinished = false, isDrawing = false;
+let startY = 0, audioUnlocked = false, lastX = null, lastY = null;
+
+window.addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
+window.addEventListener('touchend', e => {
+    let endY = e.changedTouches[0].clientY;
+    if (startY - endY > 40 && !audioUnlocked) initExperience();
+});
+
+function initExperience() {
+    if(audioUnlocked) return;
+    audioUnlocked = true;
+    isDrawing = false;
+    lastX = null;
+    lastY = null;
+
+    const sounds = ['bgMusic', 'soundStart', 'soundFinish', 'scrubSound'];
+    sounds.forEach(id => {
+        const s = document.getElementById(id);
+        s.muted = false;
+        s.play().then(() => { if(id !== 'bgMusic') { s.pause(); s.currentTime = 0; } }).catch(() => {});
+    });
+
+    document.getElementById('startScreen').style.opacity = '0';
+    setTimeout(() => { document.getElementById('startScreen').style.visibility = 'hidden'; }, 600);
+
+    document.getElementById('spongeContainer').style.opacity = '1';
+    document.getElementById('spongeContainer').classList.add('auto-move');
+    document.getElementById('tutorialCaption').style.opacity = '1';
+    
+    isTutorial = true;
+    document.getElementById('videoBg').play();
+}
+
+function startCleaning() {
+    if (isGameStarted) return;
+    isGameStarted = true;
+    isTutorial = false;
+    
+    document.getElementById('soundStart').play().catch(() => {});
+    hand.style.opacity = '0';
+    document.getElementById('tutorialCaption').style.opacity = '0';
+    
+    document.getElementById('poster').style.display = 'none';
+    document.getElementById('muteBtn').style.display = 'flex';
+    document.getElementById('spongeContainer').classList.remove('auto-move');
+}
+
+window.addEventListener('pointermove', e => {
+    if (!audioUnlocked || isFinished) return;
+    const r = canvas.getBoundingClientRect();
+
+     if (isDrawing && e.buttons === 0) {
+        isDrawing = false;
+        if (!isFinished) outline.style.display = 'block';
+        document.getElementById('scrubSound').pause();
+    }
+
+    if (isDrawing) {
+        moveSponge(e.clientX - r.left, e.clientY - r.top);
+        const x = (e.clientX - r.left) * (canvas.width / r.width);
+        const y = (e.clientY - r.top) * (canvas.height / r.height);
+        draw(x, y);
+    } 
+});
+
+window.addEventListener('pointercancel', () => {
+    isDrawing = false;
+    if (!isFinished) outline.style.display = 'block';
+    document.getElementById('scrubSound').pause();
+});
+
+window.addEventListener('pointerdown', e => {
+    if (!audioUnlocked || isFinished) return;
+    if (e.target.tagName === 'IMG' && e.target.id !== 'canvas') return;
+    if (!isGameStarted) startCleaning();
+    isDrawing = true;
+    outline.style.display = 'none';
+    const r = canvas.getBoundingClientRect();
+    lastX = (e.clientX - r.left) * (canvas.width / r.width);
+    lastY = (e.clientY - r.top) * (canvas.height / r.height);
+    moveSponge(e.clientX - r.left, e.clientY - r.top);
+});
+
+window.addEventListener('pointerup', () => {
+    isDrawing = false;
+    lastX = null; lastY = null;
+    if (!isFinished) outline.style.display = 'block';
+    document.getElementById('scrubSound').pause();
+});
+
+function moveSponge(x, y) {
+    const container = document.getElementById('spongeContainer');
+    container.classList.remove('auto-move');
+    container.style.left = x + 'px';
+    container.style.top = y + 'px';
+}
+
+function draw(x, y) {
+    const sfx = document.getElementById('scrubSound');
+    if (sfx.paused) sfx.play();
+
+    outline.style.opacity = '0';
+    
+    ctx.globalCompositeOperation = 'destination-out';
+    if (lastX !== null) {
+        const dx = x - lastX, dy = y - lastY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const steps = Math.max(1, Math.floor(dist / 5));
+        for (let i = 0; i <= steps; i++) {
+            ctx.drawImage(brush, lastX + (dx*i/steps) - 100, lastY + (dy*i/steps) - 100, 200, 200);
+        }
+    }
+    lastX = x; lastY = y;
+    if (Math.random() > 0.9) checkWin();
+}
+
+function checkWin() {
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let clear = 0;
+    for (let i = 3; i < data.length; i += 400) if (data[i] < 150) clear++;
+    if ((clear / (data.length / 400)) * 100 > 50) finishGame();
+}
+
+function finishGame() {
+    if (isFinished) return;
+    isFinished = true;
+    document.getElementById('spongeContainer').style.opacity = '0';
+    document.getElementById('scrubSound').pause();
+    document.getElementById('soundFinish').play().catch(() => {});
+
+    setTimeout(() => { document.getElementById('wowEffect').classList.add('visible'); }, 400);
+    setTimeout(() => {
+        document.getElementById('overlay').style.opacity = '0.6';
+        document.getElementById('ctaBtn').style.display = 'block';
+    }, 1200);
+
+    createExplosion();
+}
+
+function initFog() {
+    const img = new Image(); img.src = 'assets/fog.webp';
+    img.onload = () => {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+}
+
+function resize() {
+    canvas.width = 1080; canvas.height = 1920; 
+    initFog();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('load', resize);
+resize();
+
+document.getElementById('muteBtn').onclick = () => {
+    const audios = document.querySelectorAll('audio');
+    const state = !audios[0].muted;
+    audios.forEach(a => a.muted = state);
+    document.getElementById('muteBtn').innerText = state ? '🔇' : '🔊';
+};
+
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+let particles = [];
+
+class Particle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = Math.random() * 4 + 2;
+        this.speedX = (Math.random() - 0.5) * 15;
+        this.speedY = (Math.random() - 0.5) * 15;
+        this.color = `rgba(173, 216, 230, ${Math.random() * 0.5 + 0.5})`;
+        this.gravity = 0.2; 
+        this.life = 100;    
+    }
+
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.speedY += this.gravity; 
+        this.life -= 1.5; 
+    }
+
+    draw() {
+        pCtx.beginPath();
+        pCtx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        pCtx.fillStyle = this.color;
+        pCtx.fill();
+    }
+}
+
+function createExplosion() {
+    pCanvas.width = pCanvas.offsetWidth;
+    pCanvas.height = pCanvas.offsetHeight;
+    
+    for (let i = 0; i < 100; i++) {
+        particles.push(new Particle(pCanvas.width / 2, pCanvas.height / 2));
+    }
+    animateParticles();
+}
+
+function animateParticles() {
+    if (particles.length === 0) return;
+    
+    pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+    
+    for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+        
+        if (particles[i].life <= 0) {
+            particles.splice(i, 1);
+            i--;
+        }
+    }
+    requestAnimationFrame(animateParticles);
+}
+</script>
+</body>
+</html>
